@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Local PCB inspection with fiducial alignment and component-level comparison.">
+  <title>Trace — PCB inspection</title>
+  <link rel="stylesheet" href="/styles.css"><script src="/app.js" defer></script>
+</head>
+<body>
+<aside class="rail">
+  <a class="brand" href="/" aria-label="Trace home"><span class="brand-icon">⌘</span>trace<span class="brand-period">.</span></a>
+  <div class="rail-caption">BOARD INTELLIGENCE</div>
+  <nav aria-label="Workspace">
+    <button class="nav-item active" id="workspaceNav"><span>▧</span> Inspection workspace</button>
+    <a class="nav-item" href="/docs" target="_blank" rel="noopener"><span>↗</span> API reference</a>
+  </nav>
+  <div class="rail-project"><span class="eyebrow">CURRENT PROFILE</span><strong id="railBoard">No board selected</strong><span id="railCount">Create a profile to begin</span></div>
+  <div class="rail-bottom"><span class="status-dot"></span> Local processing<div>Your boards stay on this device.</div><span class="version">CLASSICAL CV · v1.0</span></div>
+</aside>
+<main>
+  <header class="topbar"><div><span class="breadcrumb">Workspace</span><span class="slash">/</span>PCB inspection</div><span class="offline-badge"><i></i> OFFLINE READY</span></header>
+  <section class="page-heading"><div><span class="eyebrow">INSPECT WITH CONFIDENCE</span><h1>Every component counts.</h1><p>Compare your board to a known-good reference. Find what’s missing.</p></div><button id="demoButton" class="button secondary">Try the sample board <span>↗</span></button></section>
+  <div class="workflow" role="tablist" aria-label="Inspection steps">
+    <button class="step active" data-step="setup" role="tab" aria-selected="true"><span class="step-number">01</span><span><b>Reference board</b><small>Upload & identify</small></span><span class="step-arrow">→</span></button>
+    <button class="step" data-step="define" role="tab" aria-selected="false"><span class="step-number">02</span><span><b>Define components</b><small>Confirm part locations</small></span><span class="step-arrow">→</span></button>
+    <button class="step" data-step="inspect" role="tab" aria-selected="false"><span class="step-number">03</span><span><b>Inspect & report</b><small>Compare your test board</small></span></button>
+  </div>
+  <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+  <section id="setupPanel" class="panel" role="tabpanel">
+    <div class="section-top"><div><h2>A good reference starts here.</h2><p>Use a sharp photo with all four ArUco markers visible.</p></div><span class="subtle-pill">ONE-TIME SETUP</span></div>
+    <form id="boardForm">
+      <div class="setup-grid">
+        <div class="upload-card primary-upload"><div class="upload-symbol">▧</div><span class="eyebrow">01 / KNOWN-GOOD BOARD</span><h3>Upload the ideal PCB</h3><p>JPEG, PNG or HEIC · up to 20 MB</p><label class="file-label" for="ideal">Choose reference image</label><input id="ideal" name="ideal" type="file" accept=".jpg,.jpeg,.png,.heic,.heif" required><div class="file-name" id="idealName">No image selected</div><img id="idealPreview" class="upload-preview" alt="Selected reference PCB" hidden></div>
+        <div class="source-card"><span class="eyebrow">02 / COMPONENT DATA</span><h3>Give every part a name.</h3><p>Import your schematic or BOM to connect locations with designators and values.</p>
+          <label class="field-label" for="name">Board profile name</label><input id="name" name="name" type="text" placeholder="e.g. NE555 timer · Rev A" maxlength="128" required>
+          <label class="field-label" for="schematic">Schematic or netlist <span>optional with BOM</span></label><input id="schematic" name="schematic" type="file" accept=".kicad_sch,.net,.csv,.pdf,.jpg,.jpeg,.png,.heic,.heif">
+          <label class="field-label" for="bom">BOM CSV <span>required for PDF / image schematics</span></label><input id="bom" name="bom" type="file" accept=".csv">
+          <details><summary>Placement file & holder dimensions</summary><label class="field-label" for="placement">KiCad PCB or pick-and-place CSV</label><input id="placement" name="placement" type="file" accept=".kicad_pcb,.csv"><p class="help">Placement boxes are suggestions. Confirm their position and size in the next step.</p><div class="dimensions"><label>Marker-center width (mm)<input name="width_mm" type="number" value="86.25" min="1" step="0.01" required></label><label>Marker-center height (mm)<input name="height_mm" type="number" value="61.25" min="1" step="0.01" required></label></div><p class="help">Measure between marker centers. Defaults match the sample holder. Markers: DICT_4X4_50, IDs 0–3 clockwise from top left.</p></details>
+        </div>
+      </div>
+      <div class="form-footer"><span class="privacy-note">◉ Images and reports are stored locally.</span><button class="button primary" type="submit" id="createButton">Create board profile <span>→</span></button></div>
+    </form>
+    <div class="saved-profiles"><label for="savedBoards">Continue with a saved profile</label><div><select id="savedBoards"><option value="">Select a board…</option></select><button id="loadBoard" class="button secondary">Open profile</button></div></div>
+  </section>
+  <section id="definePanel" role="tabpanel" hidden>
+    <div class="section-top"><div><h2>Map your components.</h2><p>Select a designator, then drag a box around its body. Click a proposed box to use it.</p></div><span id="annotationCount" class="subtle-pill">0 / 0 DEFINED</span></div>
+    <div class="inspection-layout"><div class="viewer-card"><div class="viewer-toolbar"><span><i class="status-dot"></i> RECTIFIED REFERENCE</span><label><input id="showProposals" type="checkbox" checked> Suggestions</label></div><div class="canvas-stage"><canvas id="annotationCanvas" aria-label="Reference board. Select a part, then drag to draw its bounding box."></canvas></div><div class="viewer-footer"><span>TOP-DOWN VIEW</span><span>Drag to draw · re-draw to replace</span></div></div>
+      <aside class="component-sidebar"><span class="eyebrow">COMPONENT MAP</span><h3>Assign a location</h3><label class="field-label" for="designatorSelect">Designator</label><select id="designatorSelect"></select><p id="selectedValue" class="help"></p><div id="componentList" class="component-list"></div><button id="clearBox" class="button secondary full">Clear selected box</button><button id="saveBoxes" class="button primary full">Save component map →</button><p class="help">Include every part from the schematic or BOM. Saved profiles can be reused for the same holder and board position.</p></aside>
+    </div>
+  </section>
+  <section id="inspectPanel" role="tabpanel" hidden>
+    <div class="panel test-upload"><div><span class="eyebrow">BOARD UNDER TEST</span><h2>Ready for a closer look.</h2><p>Use the same holder and board position as the reference.</p></div><div><label class="field-label" for="testPhoto">Test PCB photo</label><input id="testPhoto" type="file" accept=".jpg,.jpeg,.png,.heic,.heif"><div class="test-actions"><label class="check-label"><input id="debugMode" type="checkbox"> Save debug images</label><button id="analyzeButton" class="button primary">Analyze board <span>↗</span></button></div></div></div>
+    <div id="progress" class="progress-box" role="status" hidden><span class="spinner"></span><div><strong>Inspecting your board</strong><p>Aligning markers, comparing components, and preparing the report…</p></div></div>
+    <div id="emptyResult" class="empty-result"><div class="crosshair">⊕</div><h3>A clear view of what’s missing.</h3><p>Your inspection and component-level report will appear here.</p><div class="signal-tags"><span>Fiducial alignment</span><span>Lighting normalization</span><span>Offline analysis</span></div></div>
+    <div id="results" hidden>
+      <div class="result-heading"><div><span class="eyebrow">INSPECTION COMPLETE</span><h2 id="resultSummary"></h2><p id="resultMeta"></p></div><div class="downloads"><a id="downloadPng" class="button secondary" download>↓ PNG</a><a id="downloadJson" class="button secondary" download>↓ JSON</a><a id="downloadPdf" class="button secondary" download>↓ PDF</a></div></div>
+      <div id="resultWarnings" class="result-warnings"></div>
+      <div class="viewer-card"><div class="viewer-toolbar"><span>BOARD UNDER TEST <b id="viewLabel">/ ORIGINAL</b></span><div><label><input id="rectifiedToggle" type="checkbox"> Rectified view</label><label><input id="presentToggle" type="checkbox"> Show present</label></div></div><div class="canvas-stage result-stage"><canvas id="resultCanvas" aria-label="Annotated test PCB with missing components highlighted"></canvas></div><div class="viewer-footer"><div class="legend"><span class="legend-missing">Missing</span><span class="legend-present">Present</span><span class="legend-uncertain">Uncertain</span><span class="legend-displaced">Displaced</span></div><span>BOXES MAPPED TO YOUR PHOTO</span></div></div>
+      <div class="table-heading"><h3>Component report</h3><span>Expand a part for possible causes & expected readings</span></div><div class="table-scroll"><table><thead><tr><th>DESIGNATOR</th><th>PART / VALUE</th><th>STATUS</th><th>CONFIDENCE</th><th>IDEAL READING</th><th></th></tr></thead><tbody id="resultsTable"></tbody></table></div>
+      <p class="report-note">Confidence is a heuristic score, not a calibrated probability. Visual presence does not establish electrical health. Possible causes require inspection; isolate components where circuit paths affect measurements.</p>
+    </div>
+  </section>
+  <footer class="page-footer"><span>TRACE / PCB INSPECTION</span><span>Precision starts with a good reference.</span></footer>
+</main>
+</body></html>

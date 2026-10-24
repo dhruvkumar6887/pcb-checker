@@ -1,0 +1,47 @@
+// Uses a development-only playwright-core installation, not a runtime dependency.
+const { chromium } = require('../.tools/browser/node_modules/playwright-core');
+const fs = require('node:fs');
+const path = require('node:path');
+(async()=>{
+  const browser=await chromium.launch({executablePath:process.env.CHROME_PATH||'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true});
+  const page=await browser.newPage({viewport:{width:1440,height:1000}});
+  const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  fs.mkdirSync('artifacts',{recursive:true});
+  await page.goto('http://127.0.0.1:8000');
+  await page.screenshot({path:'artifacts/setup-desktop.png',fullPage:true});
+  await page.getByRole('button',{name:'Try the sample board'}).click();
+  await page.locator('#results').waitFor({state:'visible'});
+  if(!(await page.locator('#resultSummary').textContent()).includes('R2, C1'))throw Error('Unexpected missing components');
+  await page.locator('#rectifiedToggle').check();
+  await page.locator('#presentToggle').check();
+  await page.getByRole('button',{name:'Details for R2'}).click();
+  await page.screenshot({path:'artifacts/results-desktop.png',fullPage:true});
+  const [download]=await Promise.all([page.waitForEvent('download'),page.locator('#downloadPdf').click()]);
+  await download.saveAs('artifacts/browser-report.pdf');
+  await page.getByRole('tab',{name:/Define components/}).click();
+  const canvas=page.locator('#annotationCanvas');
+  const bounds=await canvas.boundingBox();
+  // Replace U1's fixture box through the same pointer flow a user uses.
+  await page.locator('#designatorSelect').selectOption('U1');
+  await page.mouse.move(bounds.x+bounds.width*325/800,bounds.y+bounds.height*215/600);
+  await page.mouse.down();
+  await page.mouse.move(bounds.x+bounds.width*435/800,bounds.y+bounds.height*315/600);
+  await page.mouse.up();
+  await page.getByRole('button',{name:'Save component map'}).click();
+  await page.locator('#inspectPanel').waitFor({state:'visible'});
+  await page.getByRole('tab',{name:/Reference board/}).click();
+  await page.locator('#name').fill('Browser upload test');
+  await page.locator('#ideal').setInputFiles(path.resolve('fixtures/ne555/ideal.png'));
+  await page.locator('#bom').setInputFiles(path.resolve('fixtures/ne555/bom.csv'));
+  await page.getByRole('button',{name:'Create board profile'}).click();
+  await page.locator('#definePanel').waitFor({state:'visible'});
+  await page.screenshot({path:'artifacts/annotation-desktop.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});
+  await page.screenshot({path:'artifacts/annotation-mobile.png',fullPage:true});
+  await page.getByRole('tab',{name:/Reference board/}).click();
+  await page.screenshot({path:'artifacts/setup-mobile.png',fullPage:true});
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);
+  await browser.close();
+  if(errors.length||overflow)throw Error(JSON.stringify({errors,overflow}));
+  console.log('Browser checks passed: demo, toggles, details, PDF download, box editing, uploads, and mobile layout.');
+})().catch(error=>{console.error(error);process.exit(1);});
