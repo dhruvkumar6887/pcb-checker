@@ -1,0 +1,43 @@
+geometry:
+  pixels_per_mm: 8
+  marker_mm: 10
+  baseline_width_mm: 86.25
+  baseline_height_mm: 61.25
+  margin_mm: 6.875
+  max_side_px: 2200
+  ratio_warning_px: 18
+  ratio_confidence_factor: 0.75
+images:
+  max_upload_mb: 20
+  max_pixels: 24000000
+  min_blur_variance: 12
+  clahe_clip: 2.0
+  clahe_tiles: 8
+detection:
+  padding_px: 4
+  search_px: 7
+  displaced_search_px: 32
+  displaced_offset_px: 10
+  displaced_template_min: 0.86
+  present_threshold: 0.76
+  missing_threshold: 0.55
+  weights: {ssim: 0.30, color: 0.20, edges: 0.15, template: 0.35}
+  color_scale: 65
+  edge_scale: 0.20
+  canny_low: 60
+  canny_high: 150
+  min_roi_px: 8
+  max_components: 500
+  proposal_min_area: 100
+  proposal_max_area: 10000
+  proposal_limit: 80
+  proposal_saturation_min: 45
+  proposal_value_min: 110
+  proposal_value_max: 245
+features:
+  yolo: false
+  yolo_weights: null
+  yolo_min_confidence: 0.5
+  yolo_fusion_weight: 0.25
+  datasheet_lookup: false
+  datasheet_provider: null

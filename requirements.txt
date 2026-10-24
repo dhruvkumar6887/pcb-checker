@@ -1,0 +1,14 @@
+fastapi==0.115.12
+uvicorn==0.34.2
+pydantic==2.11.4
+python-multipart==0.0.20
+opencv-contrib-python-headless==4.11.0.86
+numpy==2.2.5
+scipy==1.15.2
+scikit-image==0.25.2
+Pillow==11.2.1
+pillow-heif==0.22.0
+PyYAML==6.0.2
+reportlab==4.4.0
+pytest==8.3.5
+httpx==0.28.1

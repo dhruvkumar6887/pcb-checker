@@ -1,0 +1,68 @@
+[
+  {
+    "designator": "U1",
+    "value": "NE555",
+    "footprint": "DIP-8",
+    "roi": [
+      325,
+      215,
+      110,
+      100
+    ]
+  },
+  {
+    "designator": "R1",
+    "value": "1k",
+    "footprint": "Axial",
+    "roi": [
+      185,
+      180,
+      72,
+      30
+    ]
+  },
+  {
+    "designator": "R2",
+    "value": "10k",
+    "footprint": "Axial",
+    "roi": [
+      510,
+      180,
+      72,
+      30
+    ]
+  },
+  {
+    "designator": "C1",
+    "value": "10uF",
+    "footprint": "Radial",
+    "roi": [
+      200,
+      360,
+      55,
+      55
+    ]
+  },
+  {
+    "designator": "Q1",
+    "value": "2N2222",
+    "footprint": "TO-92",
+    "roi": [
+      510,
+      355,
+      65,
+      55
+    ]
+  },
+  {
+    "designator": "D1",
+    "value": "Red LED",
+    "footprint": "LED-5mm",
+    "roi": [
+      350,
+      395,
+      45,
+      45
+    ]
+  }
+]

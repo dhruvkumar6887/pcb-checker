@@ -1,0 +1,12 @@
+# Implementation decisions
+
+- Local-only deployment: FastAPI serves a buildless HTML/CSS/JavaScript UI. This is the simpler frontend option explicitly allowed by the brief. Docker runs the same application; no cloud services or paid keys.
+- The named fixture contains six components (U1, R1, R2, C1, Q1, D1), despite the brief saying five. All six are included.
+- Marker centers define the canonical frame. A physical rectangular holder is assumed. Enter the measured horizontal/vertical center-to-center distances when defining a board. Defaults describe the included fixture. Marker ID placement must match the brief; individual marker print rotations do not matter. Center-only homography avoids assuming print orientation.
+- Scale-invariant distance ratios are NOT perspective-invariant. Their raw-image least-squares check is advisory, never proof that a part is missing. Boxes are mapped using the inverse homography and returned both as quadrilaterals and bounding rectangles.
+- Deterministic classical scores are heuristics, not calibrated probabilities. Ambiguous components remain uncertain. Tune with real examples before operational use. Synthetic tests validate only the documented synthetic image distribution, not arbitrary phone images or PCBs.
+- Coordinates from placement files are proposals: millimeters, bottom-left origin, Y flipped into the canonical image, centered in the holder. Board placement offsets/rotations and footprint body dimensions are not inferable reliably from a schematic. Users must confirm every proposal.
+- PDF/image schematics are accepted as attachments but do not supply connectivity. A BOM is required alongside them; all component boxes need confirmation.
+- Analyses execute in a bounded background thread; status is persisted in SQLite. Interrupted queued/running jobs become failed after restart. Uploads, board profiles and reports are local. File hashes plus profile/config hashes form the analysis cache key.
+- Missing-part causes are ranked generic possibilities, not diagnosed facts. Net names are reported but circuit behavior is not invented. Supply voltages and IC temperature limits require explicit data; no generic operating temperature or a guessed supply is reported as measured/expected.
+- Optional YOLO requires user-trained weights. Optional datasheet enrichment uses an injectable provider and strict validated extraction; no API client or paid dependency is installed. Off by default, with offline fallback.
