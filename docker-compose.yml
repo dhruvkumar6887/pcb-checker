@@ -1,0 +1,18 @@
+services:
+  pcb-checker:
+    build: .
+    ports:
+      - "127.0.0.1:${PCB_PORT:-8000}:8000"
+    volumes:
+      - pcb-data:/app/data
+      - ./config.yaml:/app/config.yaml:ro
+    environment:
+      PCB_DATA_DIR: /app/data
+      PCB_SEARCH_ENDPOINT: ${PCB_SEARCH_ENDPOINT:-}
+      PCB_SEARCH_API_KEY: ${PCB_SEARCH_API_KEY:-}
+      PCB_LLM_ENDPOINT: ${PCB_LLM_ENDPOINT:-}
+      PCB_LLM_MODEL: ${PCB_LLM_MODEL:-}
+      PCB_LLM_API_KEY: ${PCB_LLM_API_KEY:-}
+    restart: unless-stopped
+volumes:
+  pcb-data:

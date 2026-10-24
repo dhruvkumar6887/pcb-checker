@@ -32,6 +32,12 @@ def test_full_pipeline_cache_and_downloads(client):
     assert client.get(f'/api/analyses/{analysis_id}/image').content.startswith(b'\x89PNG')
     assert client.get(f'/api/analyses/{analysis_id}/image?rectified=true&show_present=true').status_code==200
     assert client.get(f'/api/analyses/{analysis_id}/report?format=pdf').content.startswith(b'%PDF')
+    # Portrait phone images must fit a PDF page rather than causing LayoutError.
+    from backend.app.reports import pdf_report
+    from PIL import Image
+    portrait_path = store.DATA/'portrait.png'
+    Image.new('RGB',(300,1800),'white').save(portrait_path)
+    assert pdf_report({**result,'original_size':[300,1800]},portrait_path).startswith(b'%PDF')
     assert client.get(f'/api/analyses/{analysis_id}/report').json()['missing']==result['missing']
     assert len(list((store.DATA/'analyses'/analysis_id).glob('diff_*.png')))==6
     again = client.post(f"/api/boards/{profile['id']}/analyze?debug=1",files={'test':('test.png',image)})
@@ -56,3 +62,16 @@ def test_reference_schematic_needs_bom(client):
     root = Path(__file__).resolve().parents[2]/'fixtures/ne555'
     response = client.post('/api/boards',files={'ideal':('ideal.png',(root/'ideal.png').read_bytes()),'schematic':('schematic.pdf',b'%PDF')})
     assert response.json()['error']['code']=='bom_required'
+
+def test_gross_profile_mismatch(client):
+    import cv2
+    import numpy as np
+    from backend.vision.synthetic import fixture
+    board = client.post('/api/demo').json()
+    image = fixture()
+    image[120:480,120:680] = np.random.default_rng(42).integers(0,255,(360,560,3),dtype=np.uint8)
+    encoded = cv2.imencode('.png',image)[1].tobytes()
+    response = client.post(f"/api/boards/{board['id']}/analyze",files={'test':('wrong.png',encoded)})
+    result = wait_result(client,response.json()['analysis_id'])
+    assert result['status']=='failed',result
+    assert result['error']['code']=='board_profile_mismatch'

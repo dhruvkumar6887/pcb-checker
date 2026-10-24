@@ -27,6 +27,7 @@ detection:
   canny_low: 60
   canny_high: 150
   min_roi_px: 8
+  min_background_similarity: 0.35
   max_components: 500
   proposal_min_area: 100
   proposal_max_area: 10000

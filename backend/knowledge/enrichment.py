@@ -85,7 +85,9 @@ def lookup(mpn,search:SearchProvider,extractor:Extractor,fetch=download_text):
     try:
         if path.exists():
             saved = json.loads(path.read_text())
-            return DatasheetFacts.model_validate(saved['facts']),saved['url']
+            facts = DatasheetFacts.model_validate(saved['facts'])
+            if facts.mpn.casefold()!=mpn.casefold(): raise ValueError('Cached MPN mismatch')
+            return facts,saved['url']
         for url in search.search(mpn)[:3]:
             try:
                 text = fetch(url)

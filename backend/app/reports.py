@@ -1,9 +1,8 @@
 from io import BytesIO
 from xml.sax.saxutils import escape
-from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
 
 def pdf_report(report, image_path):
     output = BytesIO()
@@ -14,7 +13,8 @@ def pdf_report(report, image_path):
     story = [paragraph('PCB inspection report','Title'),paragraph(report['board_name'],'Heading2'),
              paragraph(report['summary']),paragraph(report['confidence_note']),Spacer(1,12)]
     width,height = report['original_size']
-    story.append(Image(str(image_path),width=6.2*inch,height=6.2*inch*height/width,kind='proportional'))
+    scale = min(6.2*inch/width,5*inch/height)
+    story.append(Image(str(image_path),width=width*scale,height=height*scale,kind='proportional'))
     for part in report['components']:
         story += [Spacer(1,10),paragraph(f"{part['designator']} - {part['value']} - {part['status']} ({part['confidence']:.0%})",'Heading3')]
         reading = part['ideal_reading']

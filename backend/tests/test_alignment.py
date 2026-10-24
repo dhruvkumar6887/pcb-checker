@@ -35,3 +35,17 @@ def test_missing_marker_is_friendly():
     with pytest.raises(AppError, match='') as error:
         rectify(image)
     assert error.value.code == 'markers_missing'
+
+def test_exif_orientation_and_heic():
+    import io
+    from PIL import Image
+    from backend.vision.alignment import decode_image
+    image = Image.new('RGB',(60,30),(200,60,40))
+    exif = Image.Exif()
+    exif[274] = 6
+    output = io.BytesIO()
+    image.save(output,format='JPEG',exif=exif)
+    assert decode_image(output.getvalue()).shape[:2]==(60,30)
+    output = io.BytesIO()
+    image.save(output,format='HEIF')
+    assert decode_image(output.getvalue()).shape[:2]==(30,60)

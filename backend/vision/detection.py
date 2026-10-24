@@ -18,6 +18,20 @@ def classify(score):
         return 'missing'
     return 'uncertain'
 
+def background_similarity(ideal,test,components):
+    """Reject grossly different layouts; this is not a board-identity guarantee."""
+    cfg = CONFIG['geometry']
+    margin = int((cfg['margin_mm']+cfg['marker_mm']/2)*cfg['pixels_per_mm'])
+    mask = np.zeros(ideal.shape[:2],np.uint8)
+    mask[margin:-margin,margin:-margin] = 1
+    padding = CONFIG['detection']['padding_px']
+    for part in components:
+        x,y,w,h = map(int,part['roi'])
+        mask[max(0,y-padding):y+h+padding,max(0,x-padding):x+w+padding] = 0
+    a,b = cv2.cvtColor(ideal,cv2.COLOR_BGR2GRAY),cv2.cvtColor(test,cv2.COLOR_BGR2GRAY)
+    _,similarities = structural_similarity(a,b,data_range=255,full=True)
+    return float(np.mean(similarities[mask>0])) if mask.any() else 1.
+
 def crop(image, roi, padding=0):
     x,y,w,h = map(int, roi)
     return image[max(0,y-padding):min(image.shape[0],y+h+padding),

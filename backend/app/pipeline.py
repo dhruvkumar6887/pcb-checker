@@ -8,7 +8,7 @@ from backend.app.errors import AppError
 from backend.app.models import ComponentResult
 from backend.app import store
 from backend.vision.alignment import decode_image, rectify, polygon_for_roi, ratio_check
-from backend.vision.detection import prepare_pair, score_component, crop
+from backend.vision.detection import prepare_pair, score_component, crop, background_similarity
 from backend.knowledge.engine import describe
 from backend.knowledge.enrichment import enrich
 from backend.ml.yolo import detect as yolo_detect, fuse
@@ -42,6 +42,9 @@ def analyze(analysis_id, board, raw, debug=False):
         ideal = cv2.imread(str(store.DATA/'boards'/board['id']/'ideal.png'))
         if ideal is None: raise AppError('profile_image_missing','Ideal photo is unavailable. Create the board profile again.')
         reference, normalized = prepare_pair(ideal,test)
+        background_score = background_similarity(reference,normalized,board['components'])
+        if background_score < CONFIG['detection']['min_background_similarity']:
+            raise AppError('board_profile_mismatch','The board background differs strongly from this profile. Select the correct board and keep its position fixed in the holder, then retake the photo.')
         inverse = np.linalg.inv(homography)
         results = []
         warnings = []
@@ -82,6 +85,7 @@ def analyze(analysis_id, board, raw, debug=False):
             missing=missing,uncertain=uncertain,displaced=displaced,warnings=warnings,
             original_size=[image.shape[1],image.shape[0]],canonical_size=[test.shape[1],test.shape[0]],
             inverse_homography=inverse.tolist(),elapsed_seconds=round(elapsed,3),debug=debug,
+            background_similarity=background_score,
             confidence_note='Heuristic scores, not calibrated probabilities. Visual comparison does not establish electrical health.')
         cv2.imwrite(str(directory/'original.png'),image)
         cv2.imwrite(str(directory/'rectified.png'),test)

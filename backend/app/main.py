@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Literal
 import cv2
-from fastapi import FastAPI, UploadFile, File, Form, Query, Request
+from fastapi import FastAPI, UploadFile, File, Form, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
