@@ -1,5 +1,9 @@
 # Alignment and missing-part scoring
 
+## Simple comparison without a location map
+
+The default three-upload mode rectifies and normalizes both images, then combines a blurred LAB difference mask with local SSIM disagreement. Morphological closing groups nearby changed pixels; configured minimum area and holder margins suppress small residuals and marker edges. Padded region boxes are mapped back to the phone photo with the same inverse homography. Each region receives a V label, marker-distance ratios and uncertain status. The schematic catalog remains separate because no physical correspondence has been established. Identical normalized inputs produce no regions. Local shadows or glare can still create regions, and some real defects may be visually indistinguishable. This mode highlights changes rather than proving component absence or electrical faults.
+
 ## ArUco homography
 
 Detect all four DICT_4X4_50 IDs, average each marker's four corners, and order the centers by ID 0,1,2,3. Four non-collinear point correspondences define a planar homography H from the camera image to the canonical rectangle. Canonical marker spacing is the measured center baseline in mm times configured pixels/mm; margins keep the markers inside the output. Each image gets its own homography. Individual printed marker rotation does not affect the center method.

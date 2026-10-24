@@ -35,6 +35,14 @@ detection:
   proposal_saturation_min: 45
   proposal_value_min: 110
   proposal_value_max: 245
+quick_compare:
+  lab_difference_threshold: 22
+  ssim_difference_threshold: 0.35
+  blur_kernel: 5
+  morphology_kernel: 7
+  min_changed_area: 100
+  padding_px: 6
+  max_regions: 100
 features:
   yolo: false
   yolo_weights: null

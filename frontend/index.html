@@ -6,7 +6,7 @@
   <title>Trace — PCB inspection</title>
   <link rel="stylesheet" href="/styles.css"><script src="/app.js" defer></script>
 </head>
-<body>
+<body class="quick-mode">
 <aside class="rail">
   <a class="brand" href="/" aria-label="Trace home"><span class="brand-icon">⌘</span>trace<span class="brand-period">.</span></a>
   <div class="rail-caption">BOARD INTELLIGENCE</div>
@@ -26,7 +26,22 @@
     <button class="step" data-step="inspect" role="tab" aria-selected="false"><span class="step-number">03</span><span><b>Inspect & report</b><small>Compare your test board</small></span></button>
   </div>
   <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
-  <section id="setupPanel" class="panel" role="tabpanel">
+  <section id="quickPanel" class="panel">
+    <div class="section-top"><div><h2>Upload your photos and KiCad schematic.</h2><p>Compare the correct board with your phone photo. No component mapping is required for a visual comparison.</p></div></div>
+    <form id="quickForm">
+      <div class="quick-uploads">
+        <div class="quick-file"><span class="eyebrow">01 / CORRECT BOARD</span><label class="field-label" for="quickIdeal">Ideal PCB image</label><p>A photo of the complete, correct PCB.</p><input id="quickIdeal" name="ideal" type="file" accept=".jpg,.jpeg,.png,.heic,.heif" required></div>
+        <div class="quick-file"><span class="eyebrow">02 / BOARD TO CHECK</span><label class="field-label" for="quickTest">Phone PCB image</label><p>The board you want to inspect.</p><input id="quickTest" name="test" type="file" accept=".jpg,.jpeg,.png,.heic,.heif" required></div>
+        <div class="quick-file"><span class="eyebrow">03 / KICAD REFERENCE</span><label class="field-label" for="quickSchematic">KiCad schematic</label><p>Part names and values for reference.</p><input id="quickSchematic" name="schematic" type="file" accept=".kicad_sch,.net,.csv" required></div>
+      </div>
+      <p class="help">Both photos must include the same four ArUco tags (IDs 0–3). Keep the board fixed relative to the tags.</p>
+      <details><summary>Holder dimensions (optional for visual comparison)</summary><div class="dimensions"><label>Marker-center width (mm)<input name="width_mm" type="number" value="86.25" min="1" step="0.01" required></label><label>Marker-center height (mm)<input name="height_mm" type="number" value="61.25" min="1" step="0.01" required></label></div><p class="help">Defaults match the sample holder. Enter your measured dimensions for a correctly proportioned top-down view.</p></details>
+      <div class="form-footer"><span class="privacy-note">Visual changes are highlighted for review. A schematic does not contain physical PCB part locations or ArUco distances.</span><button id="quickCompareButton" class="button primary" type="submit">Compare images →</button></div>
+    </form>
+    <div id="schematicReference" class="schematic-reference" hidden></div>
+  </section>
+  <div class="mode-controls"><button id="advancedMode" class="button secondary">Advanced: identify parts by designator</button><button id="quickMode" class="button secondary" hidden>Back to simple comparison</button><p class="help">Exact part names need a photo location map. A .kicad_pcb layout can help; .kicad_sch symbol positions are schematic drawing coordinates.</p></div>
+  <section id="setupPanel" class="panel" role="tabpanel" hidden>
     <div class="section-top"><div><h2>A good reference starts here.</h2><p>Use a sharp photo with all four ArUco markers visible.</p></div><span class="subtle-pill">ONE-TIME SETUP</span></div>
     <form id="boardForm">
       <div class="setup-grid">

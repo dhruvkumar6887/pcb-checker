@@ -95,9 +95,42 @@ def create_profile(name,raw,parts,width_mm,height_mm,placement=None):
 def health():
     return {'status':'ok','features':CONFIG['features']}
 
+@app.post('/api/compare',status_code=202)
+async def quick_compare(request:Request,ideal:Annotated[UploadFile,File()],test:Annotated[UploadFile,File()],
+    schematic:Annotated[UploadFile,File()],
+    width_mm:Annotated[float,Form(gt=0)]=CONFIG['geometry']['baseline_width_mm'],
+    height_mm:Annotated[float,Form(gt=0)]=CONFIG['geometry']['baseline_height_mm']):
+    ideal_raw = await read_upload(ideal,IMAGE_EXTENSIONS)
+    test_raw = await read_upload(test,IMAGE_EXTENSIONS)
+    schematic_raw = await read_upload(schematic,SCHEMATIC_EXTENSIONS)
+    parts = parse_parts(schematic.filename,schematic_raw)
+    import asyncio
+    board = await asyncio.to_thread(create_profile,Path(ideal.filename).stem,ideal_raw,parts,width_mm,height_mm)
+    board['mode'] = 'visual_compare'
+    board['reference_components'] = parts
+    board['components'] = []
+    board['confirmed'] = False
+    board['warnings'] = ['Schematic reference imported; visual comparison does not assign physical designators.']
+    store.save_board(board)
+    directory = store.DATA/'boards'/board['id']
+    (directory/('schematic'+Path(schematic.filename).suffix.lower())).write_bytes(schematic_raw)
+    (directory/'profile.json').write_text(json.dumps(board,indent=2),encoding='utf-8')
+    analysis_id = uuid.uuid4().hex
+    key = hashlib.sha256(ideal_raw+test_raw+schematic_raw+json.dumps(CONFIG,sort_keys=True).encode()+str((width_mm,height_mm)).encode()+b'visual-v1').hexdigest()
+    with store.connection() as db:
+        db.execute('BEGIN IMMEDIATE')
+        cached = db.execute('SELECT id,status FROM analyses WHERE cache_key=?',(key,)).fetchone()
+        if cached and cached['status']!='failed': return {'analysis_id':cached['id'],'cached':True}
+        pending = db.execute("SELECT count(*) FROM analyses WHERE status IN ('queued','running')").fetchone()[0]
+        if pending>=CONFIG['runtime']['max_pending']: raise AppError('busy','The analysis queue is full. Try again shortly.',429)
+        if cached: db.execute('DELETE FROM analyses WHERE id=?',(cached['id'],))
+        db.execute('INSERT INTO analyses (id,board_id,cache_key,status) VALUES (?,?,?,?)',(analysis_id,board['id'],key,'queued'))
+    request.app.state.executor.submit(analyze,analysis_id,board,test_raw,False)
+    return {'analysis_id':analysis_id,'cached':False}
+
 @app.get('/api/boards')
 def list_boards():
-    return [{'id':b['id'],'name':b['name'],'confirmed':b['confirmed'],'count':len(b['components'])} for b in store.boards()]
+    return [{'id':b['id'],'name':b['name'],'confirmed':b['confirmed'],'count':len(b['components'])} for b in store.boards() if b.get('mode')!='visual_compare']
 
 @app.post('/api/boards',status_code=201)
 async def new_board(ideal:Annotated[UploadFile,File()],

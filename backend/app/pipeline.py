@@ -12,6 +12,7 @@ from backend.vision.detection import prepare_pair, score_component, crop, backgr
 from backend.knowledge.engine import describe
 from backend.knowledge.enrichment import enrich
 from backend.ml.yolo import detect as yolo_detect, fuse
+from backend.vision.changes import changed_regions
 
 logger = logging.getLogger('pcb.analysis')
 COLORS = {'missing':(65,65,235),'present':(105,185,28),'uncertain':(30,180,240),'displaced':(220,100,180)}
@@ -42,17 +43,24 @@ def analyze(analysis_id, board, raw, debug=False):
         ideal = cv2.imread(str(store.DATA/'boards'/board['id']/'ideal.png'))
         if ideal is None: raise AppError('profile_image_missing','Ideal photo is unavailable. Create the board profile again.')
         reference, normalized = prepare_pair(ideal,test)
-        background_score = background_similarity(reference,normalized,board['components'])
+        quick = board.get('mode')=='visual_compare'
+        components = changed_regions(reference,normalized,board['width_mm'],board['height_mm']) if quick else board['components']
+        background_score = background_similarity(reference,normalized,components)
         if background_score < CONFIG['detection']['min_background_similarity']:
             raise AppError('board_profile_mismatch','The board background differs strongly from this profile. Select the correct board and keep its position fixed in the holder, then retake the photo.')
         inverse = np.linalg.inv(homography)
         results = []
         warnings = []
+        if quick:
+            warnings.append('Highlighted regions are visual differences, not confirmed missing parts or electrical faults. Lighting, damage, movement or missing parts can cause changes.')
+            warnings.append('KiCad schematic symbols do not locate physical parts relative to ArUco tags. V labels identify image regions only; no schematic designator has been assigned.')
         detections,ml_warning = yolo_detect(normalized)
         if ml_warning: warnings.append(ml_warning)
-        for component in board['components']:
+        for component in components:
             roi = component['roi']
             score = fuse(score_component(reference,normalized,roi),roi,detections)
+            if quick:
+                score['status'],score['confidence'] = 'uncertain',.5
             x,y,w,h = roi
             predicted = cv2.perspectiveTransform(np.float32([[[x+w/2,y+h/2]]]),inverse)[0,0]
             deviation, _ = ratio_check(component['ratios'],centers,predicted)
@@ -63,6 +71,8 @@ def analyze(analysis_id, board, raw, debug=False):
             polygon = polygon_for_roi(roi,inverse)
             low, high = polygon.min(axis=0), polygon.max(axis=0)
             detail = describe(component,score['status'])
+            if quick:
+                detail['ideal_reading']['expected'] = 'Identify this physical part before using a schematic value or electrical reading.'
             detail['ideal_reading'] = enrich(component,detail['ideal_reading'])
             result = ComponentResult(designator=component['designator'],value=component['value'],
                 status=score['status'],confidence=score['confidence'],presence_score=score['presence_score'],
@@ -70,6 +80,8 @@ def analyze(analysis_id, board, raw, debug=False):
                 roi_px_in_original_test_image=[*low.tolist(),*(high-low).tolist()],
                 polygon_px_in_original_test_image=polygon.tolist(),warnings=part_warnings,**detail).model_dump()
             results.append(result)
+            result['marker_distance_ratios'] = component['ratios']
+            result['marker_baseline_ratios'] = component['baseline_ratios']
             if debug:
                 diff = cv2.absdiff(crop(reference,roi),crop(normalized,roi))
                 heat = cv2.applyColorMap(cv2.cvtColor(diff,cv2.COLOR_BGR2GRAY),cv2.COLORMAP_JET)
@@ -77,11 +89,13 @@ def analyze(analysis_id, board, raw, debug=False):
         missing = [part['designator'] for part in results if part['status']=='missing']
         uncertain = [part['designator'] for part in results if part['status']=='uncertain']
         displaced = [part['designator'] for part in results if part['status']=='displaced']
-        if uncertain: warnings.append('Review uncertain parts before making repair decisions: '+', '.join(uncertain))
+        if uncertain and not quick: warnings.append('Review uncertain parts before making repair decisions: '+', '.join(uncertain))
         if any(part['warnings'] for part in results): warnings.append('Distance-ratio verification raised alignment warnings. Consider a more overhead photo.')
         elapsed = time.perf_counter()-started
+        summary = (f'{len(results)} visual differences found; review highlighted regions' if results else 'No significant visual differences detected') if quick else f"{len(missing)} of {len(results)} components missing"+(': '+', '.join(missing) if missing else '')
         report = dict(analysis_id=analysis_id,board_id=board['id'],board_name=board['name'],components=results,
-            summary=f"{len(missing)} of {len(results)} components missing"+(': '+', '.join(missing) if missing else ''),
+            summary=summary,mode=board.get('mode','component_profile'),
+            schematic_components=board.get('reference_components',[]),
             missing=missing,uncertain=uncertain,displaced=displaced,warnings=warnings,
             original_size=[image.shape[1],image.shape[0]],canonical_size=[test.shape[1],test.shape[0]],
             inverse_homography=inverse.tolist(),elapsed_seconds=round(elapsed,3),debug=debug,

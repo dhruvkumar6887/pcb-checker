@@ -42,6 +42,18 @@ Docker publishes only to localhost. Its named `pcb-data` volume retains profiles
 
 ## Create a board profile
 
+### Simple three-upload comparison (default)
+
+Upload the correct PCB photo, the phone photo, and your `.kicad_sch` file, then click **Compare images**. XML `.net` or BOM `.csv` also works for the reference. No board name or manual component map is needed for this mode. Both photos must show the same four holder tags, with the board fixed relative to them. Optional measured holder dimensions correct the top-down aspect ratio.
+
+The app aligns the photos, highlights significant visual differences, and lists schematic parts for reference. Region labels `V1`, `V2`, etc. are **image regions, not schematic designators**. Results remain uncertain: a difference could be a missing/moved part, other damage, glare or a shadow. The report includes each region's normalized distances to the four markers and the marker-baseline ratios. It does not claim to verify electrical faults.
+
+`.kicad_sch` coordinates describe a circuit drawing. They cannot supply physical part-to-ArUco distances. For exact named missing-part checks, choose **Advanced: identify parts by designator** and use the physical-location workflow below. A `.kicad_pcb` layout can propose physical positions but still needs registration with the photo/holder. The app never silently treats schematic drawing coordinates as PCB coordinates.
+
+API: `POST /api/compare` with multipart `ideal`, `test`, `schematic`, optional `width_mm` / `height_mm`; poll the returned `analysis_id` through the existing analysis endpoints. PNG/JSON/PDF exports work in both modes. Simple comparisons are kept out of the reusable component-profile selector.
+
+### Named component inspection (advanced)
+
 1. Place the board in a repeatable holder with **DICT_4X4_50**, 10 mm markers: **0 top left, 1 top right, 2 bottom right, 3 bottom left**. Include each complete marker and its quiet white border in the photo.
 2. Upload a known-good JPEG/PNG/HEIC image. EXIF orientation is honored. Limits: 20 MB per file, 24 megapixels per image (configurable).
 3. Name the board; upload a `.kicad_sch`, KiCad XML `.net`, or BOM CSV. CSV headers: `Designator,Value,Footprint,MPN`. Only Designator is mandatory. Quoted designator lists such as `"R1,R2"` expand into individual parts. A `.net` supplies named connectivity; the schematic parser imports symbol properties and asks for a flattened XML netlist for nets or hierarchical/multi-unit designs.

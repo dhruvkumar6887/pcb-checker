@@ -11,4 +11,6 @@ Validated in the supplied Windows workspace with Python 3.11.9 and the versions 
 - No real phone-photo dataset or physical PCB was supplied. Synthetic assertions do not establish real-world precision/recall. Calibrate against representative real boards before using results to guide rework.
 - A non-failing upstream Starlette/AnyIO TestClient deprecation warning may appear during tests.
 
+The default three-upload workflow adds two API tests (78 total): seeded missing-part regions overlap the actual erased locations without fabricated schematic identities, and identical photos yield no changes. The browser check also exercises the simple comparison and mobile layout before the advanced workflow.
+
 Run `python -m pytest backend/tests -q` for the authoritative current count. Check `git log --oneline` for the staged implementation commits.
