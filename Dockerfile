@@ -6,6 +6,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend ./backend
 COPY frontend ./frontend
 COPY fixtures ./fixtures
+COPY sample_uploads ./sample_uploads
 COPY config.yaml ./
 RUN useradd --create-home inspector && mkdir -p /app/data && chown inspector:inspector /app/data
 USER inspector

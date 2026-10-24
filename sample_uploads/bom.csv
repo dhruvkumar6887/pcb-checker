@@ -1,0 +1,7 @@
+Designator,Value,Footprint,MPN
+U1,NE555,DIP-8,
+R1,1k,Axial,
+R2,10k,Axial,
+C1,10uF,Radial,
+Q1,2N2222,TO-92,
+D1,Red LED,LED-5mm,

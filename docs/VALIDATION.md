@@ -13,4 +13,6 @@ Validated in the supplied Windows workspace with Python 3.11.9 and the versions 
 
 The default three-upload workflow adds two API tests (78 total): seeded missing-part regions overlap the actual erased locations without fabricated schematic identities, and identical photos yield no changes. The browser check also exercises the simple comparison and mobile layout before the advanced workflow.
 
+The downloadable sample pack adds two more tests (80 total): ZIP/individual-file consistency with an actual upload through `/api/compare`, and marker-distance/reference consistency. Installed KiCad 10 successfully opened `sample_uploads/03_reference.kicad_sch` and exported a netlist containing all six references. Chrome exercised the sample autofill button, ZIP download and subsequent comparison, including the mobile layout. The included schematic uses original self-contained reference blocks and is not presented as a build-ready circuit.
+
 Run `python -m pytest backend/tests -q` for the authoritative current count. Check `git log --oneline` for the staged implementation commits.

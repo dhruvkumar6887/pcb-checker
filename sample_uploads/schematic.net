@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<export version="D"><design><source>NE555 demonstrator</source></design>
+<components>
+<comp ref="U1"><value>NE555</value><footprint>DIP-8</footprint></comp>
+<comp ref="R1"><value>1k</value><footprint>Axial</footprint></comp>
+<comp ref="R2"><value>10k</value><footprint>Axial</footprint></comp>
+<comp ref="C1"><value>10uF</value><footprint>Radial</footprint></comp>
+<comp ref="Q1"><value>2N2222</value><footprint>TO-92</footprint></comp>
+<comp ref="D1"><value>Red LED</value><footprint>LED-5mm</footprint></comp>
+</components><nets>
+<net code="1" name="VCC"><node ref="U1" pin="8"/><node ref="U1" pin="4"/><node ref="R1" pin="1"/></net>
+<net code="2" name="DISCHARGE"><node ref="U1" pin="7"/><node ref="R1" pin="2"/><node ref="R2" pin="1"/></net>
+<net code="3" name="TIMING"><node ref="U1" pin="2"/><node ref="U1" pin="6"/><node ref="R2" pin="2"/><node ref="C1" pin="1"/></net>
+<net code="4" name="GND"><node ref="U1" pin="1"/><node ref="C1" pin="2"/><node ref="Q1" pin="3"/></net>
+<net code="5" name="OUT"><node ref="U1" pin="3"/><node ref="Q1" pin="2"/></net>
+<net code="6" name="LOAD"><node ref="Q1" pin="1"/><node ref="D1" pin="2"/></net>
+</nets></export>

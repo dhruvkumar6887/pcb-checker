@@ -44,6 +44,8 @@ Docker publishes only to localhost. Its named `pcb-data` volume retains profiles
 
 ### Simple three-upload comparison (default)
 
+Click **Fill with sample files**, then **Compare images** to try the actual three-upload flow. **Download samples (ZIP)** downloads the same files for manual selection. They also live in the repository's `sample_uploads/` folder; `sample_uploads.zip` is ready to extract. Upload `01_correct_pcb.png`, `02_phone_missing_parts.png`, and `03_reference.kicad_sch` in that order. R2 and C1 were erased from the synthetic test image. `04_phone_correct_board.png` has no erased parts. Optional BOM, netlist, placement proposals, exact fixture boxes and marker-distance JSON are included. The self-contained KiCad sheet is a component reference, not a build-ready circuit or physical PCB layout. Rebuild the pack with `python -m scripts.prepare_samples`.
+
 Upload the correct PCB photo, the phone photo, and your `.kicad_sch` file, then click **Compare images**. XML `.net` or BOM `.csv` also works for the reference. No board name or manual component map is needed for this mode. Both photos must show the same four holder tags, with the board fixed relative to them. Optional measured holder dimensions correct the top-down aspect ratio.
 
 The app aligns the photos, highlights significant visual differences, and lists schematic parts for reference. Region labels `V1`, `V2`, etc. are **image regions, not schematic designators**. Results remain uncertain: a difference could be a missing/moved part, other damage, glare or a shadow. The report includes each region's normalized distances to the four markers and the marker-baseline ratios. It does not claim to verify electrical faults.

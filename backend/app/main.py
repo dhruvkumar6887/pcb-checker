@@ -1,8 +1,10 @@
 import hashlib
+import io
 import json
 import logging
 import math
 import uuid
+import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -257,5 +259,22 @@ def demo_board():
 @app.get('/api/demo/test')
 def demo_test():
     return FileResponse(ROOT/'fixtures/ne555/test_missing.png',media_type='image/png',filename='test_missing.png')
+
+SAMPLE_FILES = {'01_correct_pcb.png','02_phone_missing_parts.png','03_reference.kicad_sch',
+    '04_phone_correct_board.png','bom.csv','schematic.net','placement.csv','components.json',
+    'marker_distances.json','READ_ME.txt'}
+
+@app.get('/api/samples/{filename}')
+def sample_file(filename:str):
+    if filename=='sample_uploads.zip':
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer,'w',zipfile.ZIP_DEFLATED) as archive:
+            for name in sorted(SAMPLE_FILES):
+                archive.write(ROOT/'sample_uploads'/name,'sample_uploads/'+name)
+        return Response(buffer.getvalue(),media_type='application/zip',headers={
+            'Content-Disposition':'attachment; filename="sample_uploads.zip"'})
+    if filename not in SAMPLE_FILES: raise AppError('sample_not_found','Sample file not found.',404)
+    media = 'image/png' if filename.endswith('.png') else 'application/octet-stream'
+    return FileResponse(ROOT/'sample_uploads'/filename,media_type=media,filename=filename)
 
 app.mount('/',StaticFiles(directory=ROOT/'frontend',html=True,check_dir=False),name='frontend')

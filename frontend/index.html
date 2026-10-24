@@ -28,6 +28,7 @@
   <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
   <section id="quickPanel" class="panel">
     <div class="section-top"><div><h2>Upload your photos and KiCad schematic.</h2><p>Compare the correct board with your phone photo. No component mapping is required for a visual comparison.</p></div></div>
+    <div class="sample-actions"><div><strong>Need files to try?</strong><p>Use the synthetic sample: a correct PCB, phone-style photo with R2 and C1 removed, and KiCad schematic.</p></div><button id="fillSampleButton" class="button secondary" type="button">Fill with sample files</button><a id="downloadSamples" class="button secondary" href="/api/samples/sample_uploads.zip" download>Download samples (ZIP)</a></div>
     <form id="quickForm">
       <div class="quick-uploads">
         <div class="quick-file"><span class="eyebrow">01 / CORRECT BOARD</span><label class="field-label" for="quickIdeal">Ideal PCB image</label><p>A photo of the complete, correct PCB.</p><input id="quickIdeal" name="ideal" type="file" accept=".jpg,.jpeg,.png,.heic,.heif" required></div>
