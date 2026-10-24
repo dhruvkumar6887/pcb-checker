@@ -1,0 +1,2 @@
+# Optional PDF text extraction only. Search and extraction clients use stdlib HTTP.
+pypdf==5.4.0

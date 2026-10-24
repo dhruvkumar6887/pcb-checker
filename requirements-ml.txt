@@ -1,0 +1,3 @@
+# Optional only; never needed for the classical pipeline.
+ultralytics==8.3.128
+torch==2.7.0

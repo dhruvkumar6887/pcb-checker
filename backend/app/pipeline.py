@@ -10,6 +10,8 @@ from backend.app import store
 from backend.vision.alignment import decode_image, rectify, polygon_for_roi, ratio_check
 from backend.vision.detection import prepare_pair, score_component, crop
 from backend.knowledge.engine import describe
+from backend.knowledge.enrichment import enrich
+from backend.ml.yolo import detect as yolo_detect, fuse
 
 logger = logging.getLogger('pcb.analysis')
 COLORS = {'missing':(65,65,235),'present':(105,185,28),'uncertain':(30,180,240),'displaced':(220,100,180)}
@@ -43,9 +45,11 @@ def analyze(analysis_id, board, raw, debug=False):
         inverse = np.linalg.inv(homography)
         results = []
         warnings = []
+        detections,ml_warning = yolo_detect(normalized)
+        if ml_warning: warnings.append(ml_warning)
         for component in board['components']:
             roi = component['roi']
-            score = score_component(reference,normalized,roi)
+            score = fuse(score_component(reference,normalized,roi),roi,detections)
             x,y,w,h = roi
             predicted = cv2.perspectiveTransform(np.float32([[[x+w/2,y+h/2]]]),inverse)[0,0]
             deviation, _ = ratio_check(component['ratios'],centers,predicted)
@@ -56,6 +60,7 @@ def analyze(analysis_id, board, raw, debug=False):
             polygon = polygon_for_roi(roi,inverse)
             low, high = polygon.min(axis=0), polygon.max(axis=0)
             detail = describe(component,score['status'])
+            detail['ideal_reading'] = enrich(component,detail['ideal_reading'])
             result = ComponentResult(designator=component['designator'],value=component['value'],
                 status=score['status'],confidence=score['confidence'],presence_score=score['presence_score'],
                 signals={**score['signals'],'ratio_deviation_px':deviation},roi_canonical=roi,

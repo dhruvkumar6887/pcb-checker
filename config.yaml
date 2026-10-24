@@ -39,8 +39,11 @@ features:
   yolo_weights: null
   yolo_min_confidence: 0.5
   yolo_fusion_weight: 0.25
+  yolo_min_iou: 0.3
   datasheet_lookup: false
   datasheet_provider: null
+  lookup_timeout_seconds: 8
+  lookup_max_bytes: 5000000
 runtime:
   workers: 2
   max_pending: 8
