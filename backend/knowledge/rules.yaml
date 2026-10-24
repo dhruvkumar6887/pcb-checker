@@ -1,0 +1,55 @@
+defaults:
+  probable_defects:
+    - {cause: 'Part not populated during assembly', likelihood: 0.35, source: rules, confidence: 0.35}
+    - {cause: 'Part knocked off, lifted pad, or damage during rework', likelihood: 0.30, source: rules, confidence: 0.30}
+    - {cause: 'Solder joint failure or reflow displacement', likelihood: 0.25, source: rules, confidence: 0.25}
+    - {cause: 'Thermal or overcurrent damage; inspect surrounding evidence', likelihood: 0.10, source: rules, confidence: 0.10}
+  measurement: 'Consult schematic and part datasheet'
+  expected: 'No universal expected reading; identify the part and circuit conditions.'
+  effect: 'An intended connection or circuit function may be absent.'
+categories:
+  resistor:
+    measurement: 'Resistance, power off; isolate one terminal if parallel paths exist'
+    expected: '{value} nominal; use the specified tolerance'
+    unit: ohm
+    effect: 'The resistor path is open; bias, gain, current limit, or timing may change.'
+  capacitor:
+    measurement: 'Capacitance with LCR meter, power off and capacitor discharged'
+    expected: '{value} nominal; healthy capacitor blocks steady DC after charging. In-circuit paths can affect readings.'
+    unit: F
+    effect: 'Filtering, coupling, decoupling, or timing capacitance is absent.'
+  electrolytic_cap:
+    measurement: 'Capacitance and ESR, power off and capacitor discharged; check polarity'
+    expected: '{value} nominal; ESR depends on part, frequency and temperature. No steady DC continuity in an isolated healthy capacitor.'
+    unit: F
+    effect: 'Bulk filtering or timing capacitance is absent; ripple or timing can change.'
+  diode:
+    measurement: 'Diode mode, power off; isolate if parallel paths exist'
+    expected: 'Typical silicon junction: about 0.6-0.7 V forward; reverse OL. Schottky/Zener/other types differ.'
+    unit: V
+    effect: 'Rectification, protection, or a clamp path is absent.'
+  led:
+    measurement: 'Diode mode, power off; check LED polarity and meter compliance voltage'
+    expected: 'Red LED typically about 1.8-2.2 V forward; other colors/types vary; reverse OL.'
+    unit: V
+    effect: 'The indicator or optoelectronic path is open.'
+  transistor:
+    measurement: 'Junction tests with power off; identify BJT versus MOSFET from datasheet'
+    expected: 'Silicon BJT base-emitter junction typically about 0.6-0.7 V forward. VCE(sat) depends on operating currents; MOSFET tests differ.'
+    unit: V
+    effect: 'The switching or amplification path is absent.'
+  ic:
+    measurement: 'Check supply pins against the actual circuit supply and datasheet'
+    expected: 'Supply voltage and operating temperature are part-specific; neither can be inferred from a generic IC symbol.'
+    unit: V
+    effect: 'The integrated circuit function is absent; connected nodes may float.'
+  connector:
+    measurement: 'Power off continuity to intended connected nodes'
+    expected: 'Low contact resistance on intended connections, isolation between unrelated pins; see connector rating.'
+    unit: ohm
+    effect: 'The external signal or power connection may be open.'
+  test_point:
+    measurement: 'Power off continuity to its schematic net'
+    expected: 'Low resistance to the intended net; live voltage requires a defined supply and circuit model.'
+    unit: ohm
+    effect: 'Test access is absent; the circuit itself may still operate.'
