@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="Local PCB inspection with fiducial alignment and component-level comparison.">
+  <meta name="description" content="Local PCB inspection with automatic photo alignment and component-level comparison.">
   <title>Trace — PCB inspection</title>
   <link rel="stylesheet" href="/styles.css"><script src="/app.js" defer></script>
 </head>
@@ -33,17 +33,17 @@
       <div class="quick-uploads">
         <div class="quick-file"><span class="eyebrow">01 / CORRECT BOARD</span><label class="field-label" for="quickIdeal">Ideal PCB image</label><p>A photo of the complete, correct PCB.</p><input id="quickIdeal" name="ideal" type="file" accept=".jpg,.jpeg,.png,.heic,.heif" required></div>
         <div class="quick-file"><span class="eyebrow">02 / BOARD TO CHECK</span><label class="field-label" for="quickTest">Phone PCB image</label><p>The board you want to inspect.</p><input id="quickTest" name="test" type="file" accept=".jpg,.jpeg,.png,.heic,.heif" required></div>
-        <div class="quick-file"><span class="eyebrow">03 / KICAD REFERENCE</span><label class="field-label" for="quickSchematic">KiCad schematic</label><p>Part names and values for reference.</p><input id="quickSchematic" name="schematic" type="file" accept=".kicad_sch,.net,.csv" required></div>
+        <div class="quick-file"><span class="eyebrow">03 / KICAD REFERENCE</span><label class="field-label" for="quickSchematic">Schematic or BOM CSV</label><p>Part names and values for reference.</p><input id="quickSchematic" name="schematic" type="file" accept=".kicad_sch,.net,.csv" required></div>
       </div>
-      <p class="help">Both photos must include the same four ArUco tags (IDs 0–3). Keep the board fixed relative to the tags.</p>
-      <details><summary>Holder dimensions (optional for visual comparison)</summary><div class="dimensions"><label>Marker-center width (mm)<input name="width_mm" type="number" value="86.25" min="1" step="0.01" required></label><label>Marker-center height (mm)<input name="height_mm" type="number" value="61.25" min="1" step="0.01" required></label></div><p class="help">Defaults match the sample holder. Enter your measured dimensions for a correctly proportioned top-down view.</p></details>
+      <p class="help">ArUco tags are optional. Use sharp, close-up photos of the same board side with the whole PCB visible and a similar angle. Avoid glare and busy backgrounds. If all four tags are visible, holder alignment is used automatically.</p>
+      <details><summary>Holder dimensions (optional for visual comparison)</summary><div class="dimensions"><label>Marker-center width (mm)<input name="width_mm" type="number" value="86.25" min="1" step="0.01" required></label><label>Marker-center height (mm)<input name="height_mm" type="number" value="61.25" min="1" step="0.01" required></label></div><p class="help">For tagged photos only: enter the measured marker-center dimensions. Without tags, the reference photo keeps its aspect ratio; physical measurements are unavailable.</p></details>
       <div class="form-footer"><span class="privacy-note">Visual changes are highlighted for review. A schematic does not contain physical PCB part locations or ArUco distances.</span><button id="quickCompareButton" class="button primary" type="submit">Compare images →</button></div>
     </form>
     <div id="schematicReference" class="schematic-reference" hidden></div>
   </section>
   <div class="mode-controls"><button id="advancedMode" class="button secondary">Advanced: identify parts by designator</button><button id="quickMode" class="button secondary" hidden>Back to simple comparison</button><p class="help">Exact part names need a photo location map. A .kicad_pcb layout can help; .kicad_sch symbol positions are schematic drawing coordinates.</p></div>
   <section id="setupPanel" class="panel" role="tabpanel" hidden>
-    <div class="section-top"><div><h2>A good reference starts here.</h2><p>Use a sharp photo with all four ArUco markers visible.</p></div><span class="subtle-pill">ONE-TIME SETUP</span></div>
+    <div class="section-top"><div><h2>A good reference starts here.</h2><p>Use a sharp, close-up photo of the whole PCB. ArUco markers are optional.</p></div><span class="subtle-pill">ONE-TIME SETUP</span></div>
     <form id="boardForm">
       <div class="setup-grid">
         <div class="upload-card primary-upload"><div class="upload-symbol">▧</div><span class="eyebrow">01 / KNOWN-GOOD BOARD</span><h3>Upload the ideal PCB</h3><p>JPEG, PNG or HEIC · up to 20 MB</p><label class="file-label" for="ideal">Choose reference image</label><input id="ideal" name="ideal" type="file" accept=".jpg,.jpeg,.png,.heic,.heif" required><div class="file-name" id="idealName">No image selected</div><img id="idealPreview" class="upload-preview" alt="Selected reference PCB" hidden></div>
@@ -51,7 +51,7 @@
           <label class="field-label" for="name">Board profile name</label><input id="name" name="name" type="text" placeholder="e.g. NE555 timer · Rev A" maxlength="128" required>
           <label class="field-label" for="schematic">Schematic or netlist <span>optional with BOM</span></label><input id="schematic" name="schematic" type="file" accept=".kicad_sch,.net,.csv,.pdf,.jpg,.jpeg,.png,.heic,.heif">
           <label class="field-label" for="bom">BOM CSV <span>required for PDF / image schematics</span></label><input id="bom" name="bom" type="file" accept=".csv">
-          <details><summary>Placement file & holder dimensions</summary><label class="field-label" for="placement">KiCad PCB or pick-and-place CSV</label><input id="placement" name="placement" type="file" accept=".kicad_pcb,.csv"><p class="help">Placement boxes are suggestions. Confirm their position and size in the next step.</p><div class="dimensions"><label>Marker-center width (mm)<input name="width_mm" type="number" value="86.25" min="1" step="0.01" required></label><label>Marker-center height (mm)<input name="height_mm" type="number" value="61.25" min="1" step="0.01" required></label></div><p class="help">Measure between marker centers. Defaults match the sample holder. Markers: DICT_4X4_50, IDs 0–3 clockwise from top left.</p></details>
+          <details><summary>Placement file & holder dimensions</summary><label class="field-label" for="placement">KiCad PCB or pick-and-place CSV</label><input id="placement" name="placement" type="file" accept=".kicad_pcb,.csv"><p class="help">Placement boxes are suggestions. Confirm their position and size in the next step.</p><div class="dimensions"><label>Marker-center width (mm)<input name="width_mm" type="number" value="86.25" min="1" step="0.01" required></label><label>Marker-center height (mm)<input name="height_mm" type="number" value="61.25" min="1" step="0.01" required></label></div><p class="help">Only applies to photos with tags. Measure between marker centers. Defaults match the sample holder. Markers: DICT_4X4_50, IDs 0–3 clockwise from top left.</p></details>
         </div>
       </div>
       <div class="form-footer"><span class="privacy-note">◉ Images and reports are stored locally.</span><button class="button primary" type="submit" id="createButton">Create board profile <span>→</span></button></div>
@@ -66,8 +66,8 @@
   </section>
   <section id="inspectPanel" role="tabpanel" hidden>
     <div class="panel test-upload"><div><span class="eyebrow">BOARD UNDER TEST</span><h2>Ready for a closer look.</h2><p>Use the same holder and board position as the reference.</p></div><div><label class="field-label" for="testPhoto">Test PCB photo</label><input id="testPhoto" type="file" accept=".jpg,.jpeg,.png,.heic,.heif"><div class="test-actions"><label class="check-label"><input id="debugMode" type="checkbox"> Save debug images</label><button id="analyzeButton" class="button primary">Analyze board <span>↗</span></button></div></div></div>
-    <div id="progress" class="progress-box" role="status" hidden><span class="spinner"></span><div><strong>Inspecting your board</strong><p>Aligning markers, comparing components, and preparing the report…</p></div></div>
-    <div id="emptyResult" class="empty-result"><div class="crosshair">⊕</div><h3>A clear view of what’s missing.</h3><p>Your inspection and component-level report will appear here.</p><div class="signal-tags"><span>Fiducial alignment</span><span>Lighting normalization</span><span>Offline analysis</span></div></div>
+    <div id="progress" class="progress-box" role="status" hidden><span class="spinner"></span><div><strong>Inspecting your board</strong><p>Aligning photos, comparing components, and preparing the report…</p></div></div>
+    <div id="emptyResult" class="empty-result"><div class="crosshair">⊕</div><h3>A clear view of what’s missing.</h3><p>Your inspection and component-level report will appear here.</p><div class="signal-tags"><span>Automatic photo alignment</span><span>Lighting normalization</span><span>Offline analysis</span></div></div>
     <div id="results" hidden>
       <div class="result-heading"><div><span class="eyebrow">INSPECTION COMPLETE</span><h2 id="resultSummary"></h2><p id="resultMeta"></p></div><div class="downloads"><a id="downloadPng" class="button secondary" download>↓ PNG</a><a id="downloadJson" class="button secondary" download>↓ JSON</a><a id="downloadPdf" class="button secondary" download>↓ PDF</a></div></div>
       <div id="resultWarnings" class="result-warnings"></div>

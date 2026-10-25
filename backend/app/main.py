@@ -22,7 +22,7 @@ from backend.app.profiles import confirm_components, contour_proposals
 from backend.app.pipeline import analyze, annotate
 from backend.app.reports import pdf_report
 from backend.schematic.parser import parse_parts, placement_proposals
-from backend.vision.alignment import decode_image, rectify
+from backend.vision.alignment import decode_image, prepare_reference
 
 logging.basicConfig(level=logging.INFO,format='%(message)s')
 
@@ -77,12 +77,12 @@ def create_profile(name,raw,parts,width_mm,height_mm,placement=None):
     if len(parts)>CONFIG['detection']['max_components']:
         raise AppError('too_many_components','This board exceeds the configured component limit.')
     image = decode_image(raw)
-    rectified,homography,centers = rectify(image,width_mm,height_mm)
+    rectified,alignment_mode = prepare_reference(image,width_mm,height_mm)
     if placement:
         parts = placement_proposals(*placement,parts,(rectified.shape[1],rectified.shape[0]))
     board_id = uuid.uuid4().hex
     profile = dict(id=board_id,name=name[:128],width_mm=width_mm,height_mm=height_mm,components=parts,
-                   confirmed=False,ideal_hash=hashlib.sha256(raw).hexdigest(),
+                   confirmed=False,alignment_mode=alignment_mode,ideal_hash=hashlib.sha256(raw).hexdigest(),
                    canonical_size=[rectified.shape[1],rectified.shape[0]],proposals=contour_proposals(rectified),
                    warnings=['Confirm every box on the rectified ideal image before analysis.'])
     directory = store.DATA/'boards'/board_id
@@ -118,7 +118,7 @@ async def quick_compare(request:Request,ideal:Annotated[UploadFile,File()],test:
     (directory/('schematic'+Path(schematic.filename).suffix.lower())).write_bytes(schematic_raw)
     (directory/'profile.json').write_text(json.dumps(board,indent=2),encoding='utf-8')
     analysis_id = uuid.uuid4().hex
-    key = hashlib.sha256(ideal_raw+test_raw+schematic_raw+json.dumps(CONFIG,sort_keys=True).encode()+str((width_mm,height_mm)).encode()+b'visual-v1').hexdigest()
+    key = hashlib.sha256(ideal_raw+test_raw+schematic_raw+json.dumps(CONFIG,sort_keys=True).encode()+str((width_mm,height_mm)).encode()+b'visual-v2-features').hexdigest()
     with store.connection() as db:
         db.execute('BEGIN IMMEDIATE')
         cached = db.execute('SELECT id,status FROM analyses WHERE cache_key=?',(key,)).fetchone()
@@ -200,7 +200,7 @@ async def new_analysis(board_id:str,request:Request,test:Annotated[UploadFile,Fi
     board = store.board(board_id)
     if not board['confirmed']: raise AppError('profile_incomplete','Confirm and save component boxes before analyzing a test photo.')
     raw = await read_upload(test,IMAGE_EXTENSIONS)
-    key = hashlib.sha256(raw+json.dumps(board,sort_keys=True).encode()+json.dumps(CONFIG,sort_keys=True).encode()+str(debug).encode()).hexdigest()
+    key = hashlib.sha256(raw+json.dumps(board,sort_keys=True).encode()+json.dumps(CONFIG,sort_keys=True).encode()+str(debug).encode()+b'alignment-v2').hexdigest()
     analysis_id = uuid.uuid4().hex
     with store.connection() as db:
         # A transaction serializes cache lookup and queue admission.

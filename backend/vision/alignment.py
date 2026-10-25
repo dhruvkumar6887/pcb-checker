@@ -64,6 +64,102 @@ def distance_ratios(point, centers):
     baseline = np.linalg.norm(centers[1]-centers[0])
     return (distances/distances.sum()).tolist(), (distances/baseline).tolist()
 
+
+def prepare_reference(image, width_mm=None, height_mm=None):
+    """Use the holder when available, otherwise preserve the photo's aspect ratio."""
+    try:
+        rectified, _, _ = rectify(image, width_mm, height_mm)
+        return rectified, 'aruco'
+    except AppError as exc:
+        if exc.code != 'markers_missing':
+            raise
+    _, size = geometry(width_mm, height_mm)
+    cfg = CONFIG['geometry']
+    margin = int((cfg['margin_mm'] + cfg['marker_mm']/2)*cfg['pixels_per_mm']) + 8
+    height, width = image.shape[:2]
+    scale = min((size[0]-2*margin)/width, (size[1]-2*margin)/height)
+    new_width, new_height = max(1, round(width*scale)), max(1, round(height*scale))
+    x, y = (size[0]-new_width)//2, (size[1]-new_height)//2
+    transform = np.array([[scale, 0, x], [0, scale, y], [0, 0, 1]], dtype=float)
+    reference = cv2.warpPerspective(image, transform, size, borderValue=(245,245,245))
+    return reference, 'features'
+
+
+def align_features(image, reference):
+    """Match PCB texture with SIFT and reject weak or implausible registrations."""
+    message = ('Could not reliably align these photos without tags. Use sharp, close-up photos '
+               'of the same board side, with the whole PCB visible and a similar viewing angle. '
+               'Avoid glare and a busy background, or use ArUco tags.')
+
+    def fail():
+        raise AppError('alignment_failed', message)
+
+    def features(photo):
+        scale = min(1., 1600/max(photo.shape[:2]))
+        gray = cv2.cvtColor(photo, cv2.COLOR_BGR2GRAY)
+        gray = cv2.resize(gray, None, fx=scale, fy=scale)
+        points, descriptors = cv2.SIFT_create(nfeatures=5000).detectAndCompute(gray, None)
+        return points, descriptors, scale
+
+    if cv2.Laplacian(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), cv2.CV_64F).var() < CONFIG['images']['min_blur_variance']:
+        raise AppError('blurry_image', 'Photo is too blurry. Focus on the entire PCB and retake it.')
+    source, source_desc, source_scale = features(image)
+    target, target_desc, target_scale = features(reference)
+    if source_desc is None or target_desc is None or min(len(source), len(target)) < 12:
+        fail()
+    matches = cv2.BFMatcher().knnMatch(source_desc, target_desc, k=2)
+    good = [pair[0] for pair in matches if len(pair)==2 and pair[0].distance < .72*pair[1].distance]
+    # Repeated silkscreen/features must not count as many independent observations.
+    good = sorted(good, key=lambda m:m.distance)
+    unique, used = [], set()
+    for match in good:
+        if match.trainIdx not in used:
+            unique.append(match)
+            used.add(match.trainIdx)
+    if len(unique) < 12:
+        fail()
+    a = np.float32([source[m.queryIdx].pt for m in unique])/source_scale
+    b = np.float32([target[m.trainIdx].pt for m in unique])/target_scale
+    homography, mask = cv2.findHomography(a, b, cv2.RANSAC, 3., maxIters=4000, confidence=.995)
+    if homography is None or mask is None or not np.isfinite(homography).all():
+        fail()
+    inliers = mask.ravel().astype(bool)
+    if inliers.sum() < 12 or inliers.mean() < .45:
+        fail()
+    height, width = reference.shape[:2]
+    hull = cv2.convexHull(b[inliers])
+    if cv2.contourArea(hull) < .025*width*height:
+        fail()
+    h, w = image.shape[:2]
+    corners = np.float32([[0,0],[w,0],[w,h],[0,h]])
+    denominators = np.c_[corners, np.ones(4)] @ homography[2]
+    if not (np.all(denominators > 1e-8) or np.all(denominators < -1e-8)):
+        fail()
+    projected = cv2.perspectiveTransform(corners[None], homography)[0]
+    area = cv2.contourArea(projected, oriented=True)
+    if not np.isfinite(projected).all() or not cv2.isContourConvex(projected) or not .15*width*height < area < 20*width*height:
+        fail()
+    # Require the central inspection area to be visible; cropped photos must not
+    # turn uncovered pixels into apparent missing components.
+    cfg = CONFIG['geometry']
+    margin = int((cfg['margin_mm']+cfg['marker_mm']/2)*cfg['pixels_per_mm'])
+    valid = cv2.warpPerspective(np.ones(image.shape[:2], np.uint8), homography, (width,height))
+    if valid[margin:-margin,margin:-margin].mean() < .90:
+        fail()
+    return cv2.warpPerspective(image, homography, (width,height), borderValue=(245,245,245)), homography
+
+
+def align_to_reference(image, reference, board):
+    if board.get('alignment_mode', 'aruco') == 'aruco':
+        try:
+            test, homography, centers = rectify(image, board['width_mm'], board['height_mm'])
+            return test, homography, centers, 'aruco'
+        except AppError as exc:
+            if exc.code != 'markers_missing':
+                raise
+    test, homography = align_features(image, reference)
+    return test, homography, None, 'features'
+
 def ratio_check(ratios, raw_centers, predicted):
     # Similarity invariance only; projective tilt produces expected residuals.
     target = np.asarray(ratios)

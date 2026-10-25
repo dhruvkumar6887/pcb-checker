@@ -7,7 +7,7 @@ from backend.app.config import CONFIG
 from backend.app.errors import AppError
 from backend.app.models import ComponentResult
 from backend.app import store
-from backend.vision.alignment import decode_image, rectify, polygon_for_roi, ratio_check
+from backend.vision.alignment import decode_image, align_to_reference, polygon_for_roi, ratio_check
 from backend.vision.detection import prepare_pair, score_component, crop, background_similarity
 from backend.knowledge.engine import describe
 from backend.knowledge.enrichment import enrich
@@ -39,21 +39,23 @@ def analyze(analysis_id, board, raw, debug=False):
     store.update(analysis_id,'running')
     try:
         image = decode_image(raw)
-        test, homography, centers = rectify(image,board['width_mm'],board['height_mm'])
         ideal = cv2.imread(str(store.DATA/'boards'/board['id']/'ideal.png'))
         if ideal is None: raise AppError('profile_image_missing','Ideal photo is unavailable. Create the board profile again.')
+        test, homography, centers, alignment_mode = align_to_reference(image,ideal,board)
         reference, normalized = prepare_pair(ideal,test)
         quick = board.get('mode')=='visual_compare'
         components = changed_regions(reference,normalized,board['width_mm'],board['height_mm']) if quick else board['components']
         background_score = background_similarity(reference,normalized,components)
         if background_score < CONFIG['detection']['min_background_similarity']:
-            raise AppError('board_profile_mismatch','The board background differs strongly from this profile. Select the correct board and keep its position fixed in the holder, then retake the photo.')
+            raise AppError('board_profile_mismatch','The board background differs strongly from this profile. Select the correct board and photograph the same side with similar framing and lighting.')
         inverse = np.linalg.inv(homography)
         results = []
         warnings = []
+        if alignment_mode == 'features':
+            warnings.append('Aligned using visible image features without a complete ArUco holder. Review the overlay; marker distances and physical scale are unavailable. Use close-up photos of the same PCB side with similar framing.')
         if quick:
             warnings.append('Highlighted regions are visual differences, not confirmed missing parts or electrical faults. Lighting, damage, movement or missing parts can cause changes.')
-            warnings.append('KiCad schematic symbols do not locate physical parts relative to ArUco tags. V labels identify image regions only; no schematic designator has been assigned.')
+            warnings.append('KiCad schematic symbols do not locate physical parts in a PCB photo. V labels identify image regions only; no schematic designator has been assigned.')
         detections,ml_warning = yolo_detect(normalized)
         if ml_warning: warnings.append(ml_warning)
         for component in components:
@@ -63,7 +65,9 @@ def analyze(analysis_id, board, raw, debug=False):
                 score['status'],score['confidence'] = 'uncertain',.5
             x,y,w,h = roi
             predicted = cv2.perspectiveTransform(np.float32([[[x+w/2,y+h/2]]]),inverse)[0,0]
-            deviation, _ = ratio_check(component['ratios'],centers,predicted)
+            deviation = 0.
+            if centers is not None:
+                deviation, _ = ratio_check(component['ratios'],centers,predicted)
             part_warnings = []
             if deviation > CONFIG['geometry']['ratio_warning_px']:
                 score['confidence'] *= CONFIG['geometry']['ratio_confidence_factor']
@@ -76,12 +80,12 @@ def analyze(analysis_id, board, raw, debug=False):
             detail['ideal_reading'] = enrich(component,detail['ideal_reading'])
             result = ComponentResult(designator=component['designator'],value=component['value'],
                 status=score['status'],confidence=score['confidence'],presence_score=score['presence_score'],
-                signals={**score['signals'],'ratio_deviation_px':deviation},roi_canonical=roi,
+                signals={**score['signals'],**({'ratio_deviation_px':deviation} if centers is not None else {})},roi_canonical=roi,
                 roi_px_in_original_test_image=[*low.tolist(),*(high-low).tolist()],
                 polygon_px_in_original_test_image=polygon.tolist(),warnings=part_warnings,**detail).model_dump()
             results.append(result)
-            result['marker_distance_ratios'] = component['ratios']
-            result['marker_baseline_ratios'] = component['baseline_ratios']
+            result['marker_distance_ratios'] = component['ratios'] if centers is not None else None
+            result['marker_baseline_ratios'] = component['baseline_ratios'] if centers is not None else None
             if debug:
                 diff = cv2.absdiff(crop(reference,roi),crop(normalized,roi))
                 heat = cv2.applyColorMap(cv2.cvtColor(diff,cv2.COLOR_BGR2GRAY),cv2.COLORMAP_JET)
@@ -99,7 +103,7 @@ def analyze(analysis_id, board, raw, debug=False):
             missing=missing,uncertain=uncertain,displaced=displaced,warnings=warnings,
             original_size=[image.shape[1],image.shape[0]],canonical_size=[test.shape[1],test.shape[0]],
             inverse_homography=inverse.tolist(),elapsed_seconds=round(elapsed,3),debug=debug,
-            background_similarity=background_score,
+            background_similarity=background_score,alignment_mode=alignment_mode,
             confidence_note='Heuristic scores, not calibrated probabilities. Visual comparison does not establish electrical health.')
         cv2.imwrite(str(directory/'original.png'),image)
         cv2.imwrite(str(directory/'rectified.png'),test)
